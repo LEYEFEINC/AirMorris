@@ -1,15 +1,17 @@
-local cjson = require "cjson";
+local Log = import("log");
 local FileInfo = {};
-function FileInfo.new(file, dir, metaDir)
+function FileInfo.new(file, dir)
 	local self   = {};
 	self.file    = file;
 	self.dir     = dir;
-	self.metaDir = metaDir;
+	self.metaDir = "/uploader/data/fileinfo";
 	self.meta    = {};
 	self.meta.lastCheck = 0;
 	self.meta.exists = false;
 
-	metaPath = metaDir .. self.file .. '.info.json';
+	local metaPath = self.metaDir .. "/" .. file .. '.info.json';
+
+	Log:write("Meta file... " .. metaPath)
 
 	if lfs.attributes(metaPath) then
 		self.meta.exists = true;
@@ -25,9 +27,10 @@ function FileInfo.new(file, dir, metaDir)
 	end;
 
 	self.save = function (self)
-		local metaFile, err = io.open(metaPath, 'w');
+		Log:write("Saving file " .. metaPath)
+		local metaFile, err = io.open(metaPath, 'a');
 		if metaFile == nil then
-		    print("Couldn't open file: "..err)
+		    Log:write("Couldn't open file: "..err)
 		else
 			local encoded = cjson.encode(self.meta);
 			metaFile:write(encoded);

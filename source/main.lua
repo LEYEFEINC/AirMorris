@@ -8,6 +8,9 @@ function import(file)
 	return require(__DIR__() .. file);
 end;
 
+Log = import("log");
+Log:write("Script started");
+
 function fileExists(file)
 	local f = io.open(file, "rb");
 	if f then f:close() end;
@@ -21,13 +24,9 @@ function readFile(file)
     return content;
 end
 
-local Log = import("log");
 local FileInfo = import("fileinfo");
 
-Log:write("Script started");
-
 local uploadDir = "/DCIM";
-local infoDir   = "./" .. __DIR__() .. "../data/fileinfo";
 local tokenFile = __DIR__() .. "auth.token";
 
 Log:write("Auth token...");
@@ -52,13 +51,13 @@ Log:write("Connected!");
 for token in io.lines(tokenFile) do
 	Log:write("Sending auth...");
 	res = fa.websocket{mode = "send", payload = "auth " .. token, type = 1}	
-	res, type, payload = fa.websocket{mode = "recv", tout = 5000};
+	res, type, payload = fa.websocket{mode = "recv", tout = 500};
 	Log:write(payload);
 end;
 
 Log:write("Sending hello...");
 
-res, type, payload = fa.websocket{mode = "recv", tout = 5000};
+res, type, payload = fa.websocket{mode = "recv", tout = 500};
 
 Log:write(payload);
 
@@ -74,17 +73,16 @@ for file in lfs.dir(uploadDir) do
 	Log:write("mode " .. filemode);
 
 	if (filemode == 'file' and string.sub(file, 1, 1) ~= ".") then
-		Log:write("Sending file '" .. filepath .. "'.");
-		res = fa.websocket{mode = "send", payload = "pub flashair:0 " .. filepath, type = 1}
-		res = fa.websocket{mode = "send", payload = "pub 0 " .. readFile(filepath), type = 1}
+
+		fileInfo = FileInfo.new(file, uploadDir);
+
+		if(not fileInfo.meta.exists) then
+			Log:write("Sending file '" .. filepath .. "'.");
+			fileInfo:save();
+			res = fa.websocket{mode = "send", payload = "pub flashair:0 " .. filepath, type = 1}
+			res = fa.websocket{mode = "send", payload = "pub 0 " .. readFile(filepath), type = 1}
+		end;
 	end;
-
-	-- 	fileInfo = FileInfo.new(file, uploadDir, infoDir);
-
-	-- 	if(not fileInfo.meta.exists) then
-	-- 		Log:write("Uploading '" .. uploadDir .. file .. "'.");
-	-- 		fileInfo:save();
-	-- 	end;
 end;
 
 Log:write("Script Completed.");
